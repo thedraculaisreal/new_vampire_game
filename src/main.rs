@@ -25,8 +25,8 @@ struct Movement {
 
 #[derive(Default, Clone, Copy)]
 struct Frame {
-    dir: u32, // 0 - 3
-    current_frame: u32, // 0 - 3
+    direction: u32, // 0 - 3
+    current_frame: u32, // 0 - 2
 }
 
 #[derive(Default, Clone, Copy, PartialEq)]
@@ -67,16 +67,16 @@ impl<'a> Player<'a> {
     pub fn get_frame(&mut self) {
 	match self.moving.direction {
 	    Direction::Left => {
-		self.frame.dir = 1 as u32;
+		self.frame.direction = 1 as u32;
 	    },
 	    Direction::Right => {
-		self.frame.dir = 2 as u32;
+		self.frame.direction = 2 as u32;
 	    },
 	    Direction::Up => {
-		self.frame.dir = 3 as u32;
+		self.frame.direction = 3 as u32;
 	    },
 	    Direction::Down => {
-		self.frame.dir = 0 as u32;
+		self.frame.direction = 0 as u32;
 	    },
 	}
 	if self.moving.previous_direction == self.moving.direction {
@@ -84,7 +84,7 @@ impl<'a> Player<'a> {
 	}
     }
     pub fn change_frame(&mut self) {
-	self.sprite = Rect::new(0 + (32 * self.frame.current_frame) as i32 ,0 + (36 * self.frame.dir) as i32,26, 36);
+	self.sprite = Rect::new(0 + (32 * self.frame.current_frame) as i32 ,0 + (36 * self.frame.direction) as i32,26, 36);
     }
     pub fn update_player(player: &mut Player) {
 	if player.moving.current {
@@ -92,6 +92,9 @@ impl<'a> Player<'a> {
 	    player.get_frame();
 	    player.change_frame();
 	    player.moving.previous_direction = player.moving.direction;
+	}
+	else {
+	    player.frame.current_frame = 0 as u32;
 	}
     }
 }
@@ -118,7 +121,7 @@ fn main() -> Result<(), String> {
 	previous_direction: Direction::Down,
     };
     let frame = Frame {
-	dir: 0,
+	direction: 0,
 	current_frame: 0,
     };
     let mut player = Player::new(Point::new(50,50), texture, Rect::new(0,0,26,36), movement_struct, frame);
@@ -167,7 +170,7 @@ fn main() -> Result<(), String> {
 	// render function
 	render(&mut canvas, Color::RGB(0, 0, 0), &player_list, &player)?;
 	// time management
-	std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
+	std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 20));
     }
     Ok(())
 }
@@ -184,11 +187,11 @@ fn entity_render_loop(canvas: &mut WindowCanvas , player_list: &Vec<Player>, loc
     let (width, height) = canvas.output_size()?;
     // treat center of screen as 0,0 coords
     let screen_position = local_player.pos + Point::new(width as i32 / 2, height as i32 / 2 );
-    let screen_rect = Rect::from_center(screen_position, local_player.sprite.width(), local_player.sprite.height());
+    let screen_rect = Rect::from_center(screen_position, local_player.sprite.width() * 2, local_player.sprite.height() * 2);
     canvas.copy(&local_player.texture, local_player.sprite, screen_rect)?;
     for player in player_list {
 	let screen_position = player.pos + Point::new(width as i32 / 2, height as i32 / 2 );
-	let screen_rect = Rect::from_center(screen_position, player.sprite.width(), player.sprite.height());
+	let screen_rect = Rect::from_center(screen_position, player.sprite.width() * 2, player.sprite.height() * 2);
 	canvas.copy(&player.texture, player.sprite, screen_rect)?;
     }
     Ok(())
