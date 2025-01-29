@@ -12,7 +12,7 @@ struct Player<'a> {
     texture: Texture<'a>,
     sprite: Rect,
     moving: Movement,
-    frame: u32,
+    frame: Frame,
 }
 
 #[derive(Default, Clone, Copy)]
@@ -20,9 +20,16 @@ struct Movement {
     direction: Direction,
     current: bool,
     speed: i32,
+    previous_direction: Direction, 
 }
 
 #[derive(Default, Clone, Copy)]
+struct Frame {
+    dir: u32, // 0 - 3
+    current_frame: u32, // 0 - 3
+}
+
+#[derive(Default, Clone, Copy, PartialEq)]
 enum Direction {
     #[default]
     Up,
@@ -32,7 +39,7 @@ enum Direction {
 }
 
 impl<'a> Player<'a> {
-    pub fn new(pos: Point, texture: Texture<'a>, sprite: Rect, moving: Movement, frame: u32) -> Self {
+    pub fn new(pos: Point, texture: Texture<'a>, sprite: Rect, moving: Movement, frame: Frame) -> Self {
 	Self {
 	    pos,
 	    texture,
@@ -57,21 +64,35 @@ impl<'a> Player<'a> {
 	    }
 	}
     }
-    pub fn get_frame(&mut self) -> u32 {
+    pub fn get_frame(&mut self) {
 	match self.moving.direction {
-	    Direction::Left => 1,
-	    Direction::Right => 2,
-	    Direction::Up => 3,
-	    Direction::Down => 0,
-	}   
+	    Direction::Left => {
+		self.frame.dir = 1 as u32;
+	    },
+	    Direction::Right => {
+		self.frame.dir = 2 as u32;
+	    },
+	    Direction::Up => {
+		self.frame.dir = 3 as u32;
+	    },
+	    Direction::Down => {
+		self.frame.dir = 0 as u32;
+	    },
+	}
+	if self.moving.previous_direction == self.moving.direction {
+	    self.frame.current_frame = (self.frame.current_frame + 1) % 2;
+	}
     }
     pub fn change_frame(&mut self) {
-	self.sprite = Rect::new(0,0 + (36 * self.frame) as i32,26, 36);
+	self.sprite = Rect::new(0 + (32 * self.frame.current_frame) as i32 ,0 + (36 * self.frame.dir) as i32,26, 36);
     }
     pub fn update_player(player: &mut Player) {
-	player.change_pos();
-	player.frame = player.get_frame();
-	player.change_frame();
+	if player.moving.current {
+	    player.change_pos();
+	    player.get_frame();
+	    player.change_frame();
+	    player.moving.previous_direction = player.moving.direction;
+	}
     }
 }
 
@@ -94,10 +115,15 @@ fn main() -> Result<(), String> {
 	direction: Direction::Down,
 	current: false,
 	speed: 5,
+	previous_direction: Direction::Down,
     };
-    let mut player = Player::new(Point::new(50,50), texture, Rect::new(0,0,26,36), movement_struct, 1 as u32);
-    let player_1 = Player::new(Point::new(50,50), texture_1, Rect::new(0,0,26,36), movement_struct, 1 as u32);
-    let player_2 = Player::new(Point::new(75,75), texture_2, Rect::new(0,0,26,36), movement_struct, 1 as u32);
+    let frame = Frame {
+	dir: 0,
+	current_frame: 0,
+    };
+    let mut player = Player::new(Point::new(50,50), texture, Rect::new(0,0,26,36), movement_struct, frame);
+    let player_1 = Player::new(Point::new(50,50), texture_1, Rect::new(0,0,26,36), movement_struct, frame);
+    let player_2 = Player::new(Point::new(75,75), texture_2, Rect::new(0,0,26,36), movement_struct, frame);
     player_list.push(player_1);
     player_list.push(player_2);
     let mut event_pump = sdl_context.event_pump()?;
@@ -135,9 +161,9 @@ fn main() -> Result<(), String> {
 	}
 	// game loop
 	// update function
-	if player.moving.current {
-	    Player::update_player(&mut player);
-	}
+	
+	Player::update_player(&mut player);
+	
 	// render function
 	render(&mut canvas, Color::RGB(0, 0, 0), &player_list, &player)?;
 	// time management
